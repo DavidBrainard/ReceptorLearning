@@ -21,10 +21,7 @@
   :target-path "target/"
   :compile-path "target/classes"
   ;; and the namespaces to aot compile
-  :aot [brainardlab.nben.retina.jvm.Matrix2D
-        brainardlab.nben.retina.jvm.HSImage
-        brainardlab.nben.retina.jvm.CorrelationAnalysis
-        brainardlab.nben.retina.constants
+  :aot [brainardlab.nben.retina.constants
         brainardlab.nben.retina.core
         brainardlab.nben.retina.hyperspectral
         brainardlab.nben.retina.simulation
