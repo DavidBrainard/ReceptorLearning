@@ -27,8 +27,8 @@
                  :S-cone-flags [:human]
                  :samples [500000]
                  :runs [1 2]
-                 :caches ["/Users/nben/Documents/ReceptorLearning/Code/Data/hyperspectral-cache.bin"]
-                 :output-dir "/Users/nben/Documents/ReceptorLearning/Code/Data/test-simulations"}
+                 :caches ["/Users/iron/nben/data/hyperspectral-cache.bin"]
+                 :output-dir "/Users/iron/nben/data/simulations/basic"}
       :standard {:surrounds [[0.25 3.0] nil]
                  :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
                  :M-lambda-maxs [530.3 535 540 545 550 555]
@@ -38,8 +38,8 @@
                  :S-cone-flags [:human]
                  :samples [2500000]
                  :runs [0]
-                 :caches ["/Users/nben/Documents/ReceptorLearning/Code/Data/hyperspectral-cache.bin"]
-                 :output-dir "/Users/nben/Documents/ReceptorLearning/Code/Data/test-simulations"}})
+                 :caches ["/Users/iron/nben/data/hyperspectral-cache.bin"]
+                 :output-dir "/Users/iron/nben/data/simulations/standard"}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -105,7 +105,11 @@
 (defn simulate-some-retinas [plan-id total-nodes node-id &{:keys [verbose]}]
   (let [plan (get simulation-plans plan-id)
         plan-retinas (retinas-from-plan plan)
-        my-retinas (take-nth total-nodes (nthnext plan-retinas node-id))
+        my-retinas (if (coll? node-id)
+                     (apply concat
+                            (map #(take-nth total-nodes (nthnext plan-retinas %))
+                                 node-id))
+                     (take-nth total-nodes (nthnext plan-retinas node-id)))
         runs (get plan :runs [0])
         caches (loop [r {}, q (:caches plan)]
                  (if q
@@ -121,7 +125,21 @@
       (if verbose
         (println (format "Simulating %d retinas with %d samples from cache %s (run = %d)..."
                          (count my-retinas) image-count (key cache) run)))
-      (let [corr-mtcs (simulate-retinas my-retinas (val cache) :image-count image-count)
+      (let [corr-mtcs (if verbose
+                        (simulate-retinas
+                         my-retinas (val cache)
+                         :image-count image-count
+                         :init-reduce (cons [0 nil] (repeat (dec (count my-retinas)) nil))
+                         :analysis (cons (fn [[iter dat] sig]
+                                           (if (= 9999 (mod iter 10000))
+                                             (println "Iteration " iter "..."))
+                                           [(inc iter) (correlation-analysis dat sig)])
+                                         (repeat (dec (count my-retinas)) correlation-analysis))
+                         :finish (cons (fn [[iter dat]]
+                                         (println "Simulation complete after " iter " iterations.")
+                                         (correlation-analysis dat))
+                                       (repeat (dec (count my-retinas)) correlation-analysis)))
+                        (simulate-retinas my-retinas (val cache) :image-count image-count))
             flnms (map #(str output-dir "/" (simulation-filename % image-count run)) my-retinas)]
         (doall
          (map #(write-simulation %1 %2 %3 :embed embed)
