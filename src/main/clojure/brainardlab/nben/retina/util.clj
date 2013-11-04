@@ -68,14 +68,19 @@
 ;; yields a filename for writing out a simulation
 (defn simulation-filename [r image-count run-id]
   (let [params (:params r)
-        Mlm (Math/round (double (:M (:lambda-max params))))
+        Mlm (Math/round (double (:M (let [lm (:lambda-max params)]
+                                      (if (= lm :automatic)
+                                        human-lambda-max
+                                        lm)))))
         cone-makeup (:cone-makeup params)
         L-M (str (:L cone-makeup) ":" (:M cone-makeup))
-        surr (if-let [s (:surround params)]
-               (if (number? s)
-                 (str s "_" 3)
-                 (str (first s) "_" (fnext s)))
-               "none")
+        surr (let [ss (:surround params)
+                   s (if (= ss :automatic) [0.25 3.0] ss)]
+               (if s
+                 (if (number? s)
+                   (str s "_" 3.0)
+                   (str (first s) "_" (fnext s)))
+                 "none"))
         mosaic (:mosaic r)
         mparams (:params mosaic)
         sz (:size mosaic)

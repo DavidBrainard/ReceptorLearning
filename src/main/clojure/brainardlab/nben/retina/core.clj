@@ -523,7 +523,7 @@
   (and (map? r) (true? (get r :retina?))))
 
 ;; These private maps are used below to interpret options to the retina function
-(def ^:private human-lambda-max {:L 558.9 :M 530.3 :S 420.7})
+(def human-lambda-max {:L 558.9 :M 530.3 :S 420.7})
 
 (let [mosaicfn mosaic]
 (defn retina
