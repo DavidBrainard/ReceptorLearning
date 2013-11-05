@@ -131,7 +131,7 @@
                          :image-count image-count
                          :init-reduce (cons [0 nil] (repeat (dec (count my-retinas)) nil))
                          :analysis (cons (fn [[iter dat] sig]
-                                           (if (= 9999 (mod iter 10000))
+                                           (if (= 0 (mod iter 1000))
                                              (println "Iteration " iter "..."))
                                            [(inc iter) (correlation-analysis dat sig)])
                                          (repeat (dec (count my-retinas)) correlation-analysis))
