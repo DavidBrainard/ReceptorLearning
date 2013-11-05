@@ -78,7 +78,7 @@
              (loop [s dep, w 0.0, sig nil]
                (if s
                  (let [[row col weight] (first s)
-                       spec (nth (nth image (dec row)) (dec col))]
+                       spec (map #(* % weight) (nth (nth image (dec row)) (dec col)))]
                    (recur (next s)
                           (+ w weight)
                           (if sig (map + sig spec) spec)))
