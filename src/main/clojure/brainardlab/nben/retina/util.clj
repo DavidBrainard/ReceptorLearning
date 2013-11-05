@@ -49,7 +49,7 @@
         L-to-M (get plan :L-to-Ms [[1 1]])
         M-lambda-max (get plan :M-lambda-maxs [530.3])
         L-lambda-max (get plan :L-lambda-maxs [558.9])
-        S-lambda-max (get plan :L-lambda-maxs [420.7])
+        S-lambda-max (get plan :S-lambda-maxs [420.7])
         S-cone-flags (get plan :S-cone-flags [:human])
         retina-size (get plan :sizes [20])]
     (retina :surround surround
