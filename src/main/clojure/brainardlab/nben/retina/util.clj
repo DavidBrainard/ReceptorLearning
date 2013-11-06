@@ -25,10 +25,8 @@
                  :S-lambda-maxs [420.7]
                  :sizes [20]
                  :S-cone-flags [:human]
-                 :samples [500000]
-                 :runs [1 2]
-                 :caches ["/Users/iron/nben/data/hyperspectral-cache.bin"]
-                 :output-dir "/Users/iron/nben/data/simulations/basic"}
+                 :samples [50]
+                 :runs [1 2]}
       :standard {:surrounds [[0.25 3.0] nil]
                  :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
                  :M-lambda-maxs [530.3 535 540 545 550 555]
@@ -37,9 +35,7 @@
                  :sizes [20 15 10 5]
                  :S-cone-flags [:human]
                  :samples [2500000]
-                 :runs [0]
-                 :caches ["/Users/iron/nben/data/hyperspectral-cache.bin"]
-                 :output-dir "/Users/iron/nben/data/simulations/standard"}})
+                 :runs [0]}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -102,7 +98,8 @@
 ;; a function for simulating some of the retinas; given the total number of jobs and
 ;; a a job id, this will simulate and write out the results for the appropriate chunk
 ;; of simulations from the given set. The plan should be :basic or :standard.
-(defn simulate-some-retinas [plan-id total-nodes node-id &{:keys [verbose]}]
+(defn simulate-some-retinas [plan-id hs-cache-filename output-dir total-nodes node-id
+                             &{:keys [verbose]}]
   (let [plan (get simulation-plans plan-id)
         plan-retinas (retinas-from-plan plan)
         my-retinas (if (coll? node-id)
@@ -111,23 +108,17 @@
                                  node-id))
                      (take-nth total-nodes (nthnext plan-retinas node-id)))
         runs (get plan :runs [0])
-        caches (loop [r {}, q (:caches plan)]
-                 (if q
-                   (recur (assoc r (first q) (read-hyperspectral-cache (first q)))
-                          (next q))
-                   r))
+        cache (read-hyperspectral-cache hs-cache-filename)
         samples (get plan :samples [2500000])
-        output-dir (get plan :output-dir ".")
         embed (get plan :embed true)]
-    (doseq [cache caches
-            image-count samples
+    (doseq [image-count samples
             run runs]
       (if verbose
         (println (format "Simulating %d retinas with %d samples from cache %s (run = %d)..."
-                         (count my-retinas) image-count (key cache) run)))
+                         (count my-retinas) image-count hs-cache-filename run)))
       (let [corr-mtcs (if verbose
                         (simulate-retinas
-                         my-retinas (val cache)
+                         my-retinas cache
                          :image-count image-count
                          :init-reduce (cons [0 nil] (repeat (dec (count my-retinas)) nil))
                          :analysis (cons (fn [[iter dat] sig]
