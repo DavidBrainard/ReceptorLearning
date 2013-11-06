@@ -36,7 +36,7 @@
                  :S-cone-flags [:human]
                  :samples [2500000]
                  :runs [0]}
-      :test     {:surround [[0.25 3.0] nil]
+      :test     {:surrounds [[0.25 3.0] nil]
                  :L-to-Ms [[16 1] [8 1] [4 1]]
                  :M-lambda-maxs [535 540]
                  :L-lambda-maxs [558.9]
