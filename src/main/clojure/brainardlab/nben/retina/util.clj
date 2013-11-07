@@ -37,35 +37,7 @@
                  :S-cone-flags [:human]
                  :samples [2500000]
                  :runs [0]
-                 :save-every 100000}
-      :savetest {:surrounds [[0.25 3.0]]
-                 :L-to-Ms [[4 1]]
-                 :M-lambda-maxs [535 540]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [10 5]
-                 :S-cone-flags [:human]
-                 :samples [100]
-                 :save-every 20
-                 :runs [3]}
-      :test     {:surrounds [[0.25 3.0] nil]
-                 :L-to-Ms [[16 1] [8 1] [4 1]]
-                 :M-lambda-maxs [535 540]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [20]
-                 :S-cone-flags [:human]
-                 :samples [2500000]
-                 :runs [3]}
-      :test-short {:surrounds [[0.25 3.0] nil]
-                   :L-to-Ms [[16 1] [8 1] [4 1]]
-                   :M-lambda-maxs [535 540]
-                   :L-lambda-maxs [558.9]
-                   :S-lambda-maxs [420.7]
-                   :sizes [20]
-                   :S-cone-flags [:human]
-                   :samples [1250000]
-                   :runs [4]}})
+                 :save-every 100000}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
