@@ -133,22 +133,22 @@
 (defn- finish-print-every [[analfn finfn every-k iter dat]]
   (println "Simulation finished after " iter " iterations.")
   (finfn dat))
-(defn- analysis-save-every [[analfn finfn R run embed every-k iter dat] sig]
+(defn- analysis-save-every [[analfn finfn R run embed every-k iter outdir dat] sig]
   (if (and (> iter 0) (= 0 (mod iter every-k)))
-    (write-simulation (simulation-filename R iter run :embed embed) R (finfn dat)))
-  [analfn finfn R run every-k (inc iter) (analfn dat sig)])
-(defn- finish-save-every [[analfn finfn R run embed every-k iter dat]]
+    (write-simulation (str outdir "/" (simulation-filename R iter run)) R (finfn dat) :embed embed))
+  [analfn finfn R run embed every-k (inc iter) outdir (analfn dat sig)])
+(defn- finish-save-every [[analfn finfn R run embed every-k iter outdir dat]]
   (finfn dat))
 (defn- init-print-every [analfn finfn every-k start-dat]
   [analfn finfn every-k 0 start-dat])
-(defn- init-save-every [analfn finfn R run embed every-k start-dat]
-  [analfn finfn R run every-k 0 start-dat])
-(defn- make-analysis [save-every print-every Rs run embed]
+(defn- init-save-every [analfn finfn R run embed every-k outdir start-dat]
+  [analfn finfn R run embed every-k 0 outdir start-dat])
+(defn- make-analysis [save-every outdir print-every Rs run embed]
   (let [n (count Rs)
         [init1 anal1 fin1]
         (if save-every
           [(map #(init-save-every correlation-analysis correlation-analysis
-                                  %1 run embed save-every nil)
+                                  %1 run embed save-every outdir nil)
                 Rs)
            (repeat n analysis-save-every)
            (repeat n finish-save-every)]
@@ -177,12 +177,14 @@
         samples (get plan :samples [2500000])
         embed (get plan :embed true)
         save-every (get plan :save-every)]
+    (if (nil? plan) (throw (IllegalArgumentException. "Plan not found")))
     (doseq [image-count samples
             run runs]
       (if verbose
         (println (format "Simulating %d retinas with %d samples from cache %s (run = %d)..."
                          (count my-retinas) image-count hs-cache-filename run)))
       (let [[inits analfns finfns] (make-analysis save-every
+                                                  output-dir
                                                   (when verbose print-every)
                                                   my-retinas
                                                   run
