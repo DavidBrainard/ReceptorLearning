@@ -26,7 +26,8 @@
                  :sizes [20]
                  :S-cone-flags [:human]
                  :samples [2500000]
-                 :runs [1 2]}
+                 :runs [1 2]
+                 :save-every 100000}
       :standard {:surrounds [[0.25 3.0] nil]
                  :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
                  :M-lambda-maxs [530.3 535 540 545 550 555]
@@ -35,7 +36,18 @@
                  :sizes [20 15 10 5]
                  :S-cone-flags [:human]
                  :samples [2500000]
-                 :runs [0]}
+                 :runs [0]
+                 :save-every 100000}
+      :savetest {:surrounds [[0.25 3.0]]
+                 :L-to-Ms [[4 1]]
+                 :M-lambda-maxs [535 540]
+                 :L-lambda-maxs [558.9]
+                 :S-lambda-maxs [420.7]
+                 :sizes [10 5]
+                 :S-cone-flags [:human]
+                 :samples [100]
+                 :save-every 20
+                 :runs [3]}
       :test     {:surrounds [[0.25 3.0] nil]
                  :L-to-Ms [[16 1] [8 1] [4 1]]
                  :M-lambda-maxs [535 540]
@@ -113,11 +125,46 @@
                  :else ""))
          "].bin")))
 
+;; used when setting up retina simulations automatically by simulate-some-retinas
+(defn- analysis-print-every [[analfn finfn every-k iter dat] sig]
+  (if (= 0 (mod iter every-k))
+    (println (format "Iteration %8d..." iter)))
+  [analfn finfn every-k (inc iter) (analfn dat sig)])
+(defn- finish-print-every [[analfn finfn every-k iter dat]]
+  (println "Simulation finished after " iter " iterations.")
+  (finfn dat))
+(defn- analysis-save-every [[analfn finfn R run embed every-k iter dat] sig]
+  (if (and (> iter 0) (= 0 (mod iter every-k)))
+    (write-simulation (simulation-filename R iter run :embed embed) R (finfn dat)))
+  [analfn finfn R run every-k (inc iter) (analfn dat sig)])
+(defn- finish-save-every [[analfn finfn R run embed every-k iter dat]]
+  (finfn dat))
+(defn- init-print-every [analfn finfn every-k start-dat]
+  [analfn finfn every-k 0 start-dat])
+(defn- init-save-every [analfn finfn R run embed every-k start-dat]
+  [analfn finfn R run every-k 0 start-dat])
+(defn- make-analysis [save-every print-every Rs run embed]
+  (let [n (count Rs)
+        [init1 anal1 fin1]
+        (if save-every
+          [(map #(init-save-every correlation-analysis correlation-analysis
+                                  %1 run embed save-every nil)
+                Rs)
+           (repeat n analysis-save-every)
+           (repeat n finish-save-every)]
+          [(repeat n nil) (repeat n correlation-analysis) (repeat n correlation-analysis)])]
+    (if print-every
+      [(cons (init-print-every (first anal1) (first fin1) print-every (first init1))
+             (next init1))
+       (cons analysis-print-every (next anal1))
+       (cons finish-print-every (next fin1))]
+      [init1 anal1 fin1])))
+
 ;; a function for simulating some of the retinas; given the total number of jobs and
 ;; a a job id, this will simulate and write out the results for the appropriate chunk
 ;; of simulations from the given set. The plan should be :basic or :standard.
 (defn simulate-some-retinas [plan-id hs-cache-filename output-dir total-nodes node-id
-                             &{:keys [verbose]}]
+                             &{:keys [verbose print-every] :or {print-every 10000}}]
   (let [plan (get simulation-plans plan-id)
         plan-retinas (retinas-from-plan plan)
         my-retinas (if (coll? node-id)
@@ -128,27 +175,23 @@
         runs (get plan :runs [0])
         cache (read-hyperspectral-cache hs-cache-filename)
         samples (get plan :samples [2500000])
-        embed (get plan :embed true)]
+        embed (get plan :embed true)
+        save-every (get plan :save-every)]
     (doseq [image-count samples
             run runs]
       (if verbose
         (println (format "Simulating %d retinas with %d samples from cache %s (run = %d)..."
                          (count my-retinas) image-count hs-cache-filename run)))
-      (let [corr-mtcs (if verbose
-                        (simulate-retinas
-                         my-retinas cache
-                         :image-count image-count
-                         :init-reduce (cons [0 nil] (repeat (dec (count my-retinas)) nil))
-                         :analysis (cons (fn [[iter dat] sig]
-                                           (if (= 0 (mod iter 1000))
-                                             (println "Iteration " iter "..."))
-                                           [(inc iter) (correlation-analysis dat sig)])
-                                         (repeat (dec (count my-retinas)) correlation-analysis))
-                         :finish (cons (fn [[iter dat]]
-                                         (println "Simulation complete after " iter " iterations.")
-                                         (correlation-analysis dat))
-                                       (repeat (dec (count my-retinas)) correlation-analysis)))
-                        (simulate-retinas my-retinas (val cache) :image-count image-count))
+      (let [[inits analfns finfns] (make-analysis save-every
+                                                  (when verbose print-every)
+                                                  my-retinas
+                                                  run
+                                                  embed)
+            corr-mtcs (simulate-retinas my-retinas cache
+                                        :image-count image-count
+                                        :init-reduce inits
+                                        :analysis analfns
+                                        :finish finfns)
             flnms (map #(str output-dir "/" (simulation-filename % image-count run)) my-retinas)]
         (doall
          (map #(write-simulation %1 %2 %3 :embed embed)
