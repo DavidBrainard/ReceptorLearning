@@ -37,41 +37,104 @@
                  :S-cone-flags [:human]
                  :samples [2500000]
                  :runs [0]
+                 :save-every 100000}
+      :blur     {:surrounds [[0.25 3.0] nil]
+                 :L-to-Ms [[16 1] [4 1] [1 1] [1 4] [1 16]]
+                 :M-lambda-maxs [530.3 540 550]
+                 :L-lambda-maxs [558.9]
+                 :S-lambda-maxs [420.7]
+                 :blurs [2]
+                 :sizes [20]
+                 :S-cone-flags [:human]
+                 :samples [2500000]
+                 :runs ["blur_2"]
+                 :save-every 100000}
+      :ditetra  {:surrounds [[0.25 3.0] nil]
+                 :L-to-A-to-Ms [[4 1 1] [2 2 1] [2 1 2] [1 1 1] [1 2 2] [1 1 4]]
+                 :M-lambda-maxs [530.3]
+                 :A-lambda-maxs [535.0 540.0 545.0 550.0 555.0]
+                 :L-lambda-maxs [558.9]
+                 :S-lambda-maxs [420.7]
+                 :sizes [20]
+                 :S-cone-flags [:human]
+                 :types [:dichromat :tetrachromat]
+                 :samples [2500000]
+                 :runs [0]
+                 :save-every 100000}
+     :LM-only   {:surrounds [[0.25 3.0] nil]
+                 :L-to-Ms [[16 1] [4 1] [1 1] [1 4] [1 16]]
+                 :M-lambda-maxs [530.3]
+                 :L-lambda-maxs [558.9]
+                 :S-lambda-maxs [420.7]
+                 :sizes [20]
+                 :S-cone-flags [:none]
+                 :samples [2500000]
+                 :runs [0]
                  :save-every 100000}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; create a list of retinas from a simulation plan
 (defn retinas-from-plan [plan]
-  (for [surround (get plan :surrounds [[0.25 3.0]])
-        L-to-M (get plan :L-to-Ms [[1 1]])
-        M-lambda-max (get plan :M-lambda-maxs [530.3])
-        L-lambda-max (get plan :L-lambda-maxs [558.9])
-        S-lambda-max (get plan :S-lambda-maxs [420.7])
-        S-cone-flags (get plan :S-cone-flags [:human])
-        retina-size (get plan :sizes [20])]
-    (retina :surround surround
-            :mosaic (mosaic :size retina-size)
-            :cones [:L :M :S]
-            :cone-makeup (cond (= S-cone-flags :human)
-                               {:L (first L-to-M)
-                                :M (fnext L-to-M)
-                                :S {:even-spacing true, :fraction 0.06}}
-                               (= S-cone-flags :none)
-                               {:L (first L-to-M)
-                                :M (fnext L-to-M)}
-                               :else (throw (IllegalArgumentException. "invalid s-cone flag")))
-            :lambda-max {:L L-lambda-max, :M M-lambda-max, :S S-lambda-max})))
+  (let [cone-lambda-maxs
+        (for [M-lambda-max (get plan :M-lambda-maxs [530.3])
+              L-lambda-max (get plan :L-lambda-maxs [558.9])
+              S-lambda-max (get plan :S-lambda-maxs [420.7])
+              A-lambda-max (get plan :A-lambda-maxs [545.0])]
+          {:L L-lambda-max :M M-lambda-max :S S-lambda-max :A A-lambda-max})]
+    (for [retina-type (get plan :types [:trichromat])
+          surround (get plan :surrounds [[0.25 3.0]])
+          L-to-M (cond (= retina-type :trichromat) (get plan :L-to-Ms [[1 1]])
+                       (= retina-type :tetrachromat) (get plan :L-to-A-to-Ms [[1 1 1]])
+                       (= retina-type :dichromat) [1]
+                       :else (throw (IllegalArgumentException. "invalid type")))
+          S-cone-flags (get plan :S-cone-flags [:human])
+          retina-size (get plan :sizes [20])
+          blur (get plan :blurs [nil])
+          lmaxs (loop [q cone-lambda-maxs, res #{}]
+                  (if (nil? q)
+                    (if (= S-cone-flags :none)
+                      (map #(dissoc % :S) (seq res))
+                      (seq res))
+                    (recur (next q)
+                           (conj res
+                                 (cond (= retina-type :trichromat) (dissoc (first q) :A)
+                                       (= retina-type :tetrachromat) (first q)
+                                       (= retina-type :dichromat) (dissoc (first q) :A :M))))))]
+      (retina :type retina-type
+              :surround surround
+              :mosaic (mosaic :size retina-size :blur blur)
+              :cones (cond (= retina-type :trichromat) [:L :M :S]
+                           (= retina-type :tetrachromat) [:L :A :M :S]
+                           (= retina-type :dichromat) [:L :S])
+              :cone-makeup (let [allbutS (cond (= retina-type :trichromat)
+                                               {:L (first L-to-M)
+                                                :M (fnext L-to-M)}
+                                               (= retina-type :tetrachromat)
+                                               {:L (nth L-to-M 0)
+                                                :A (nth L-to-M 1)
+                                                :M (nth L-to-M 2)}
+                                               :else {:L 1})]
+                             (cond (= S-cone-flags :human)
+                                   (assoc allbutS :S {:even-spacing true, :fraction 0.06})
+                                   (= S-cone-flags :none)
+                                   allbutS
+                                   (and (number? S-cone-flags) (> S-cone-flags 0))
+                                   (assoc allbutS :S S-cone-flags)
+                                   :else (throw (IllegalArgumentException. "invalid s-cone flag"))))
+              :lambda-max lmaxs))))
 
 ;; yields a filename for writing out a simulation
 (defn simulation-filename [r image-count run-id]
   (let [params (:params r)
-        Mlm (Math/round (double (:M (let [lm (:lambda-max params)]
-                                      (if (= lm :automatic)
-                                        human-lambda-max
-                                        lm)))))
+        Mlm (if-let [m (:M (let [lm (:lambda-max params)]
+                             (if (= lm :automatic)
+                               human-lambda-max
+                               lm)))]
+              (Math/round (double m))
+              "none")
         cone-makeup (:cone-makeup params)
-        L-M (str (:L cone-makeup) ":" (:M cone-makeup))
+        L-M (str (:L cone-makeup) ":" (or (:M cone-makeup) 0))
         surr (let [ss (:surround params)
                    s (if (= ss :automatic) [0.25 3.0] ss)]
                (if s
@@ -92,7 +155,9 @@
          ",samples=" image-count
          ",run=" run-id
          (let [tt (:type (:params r))]
-           (cond (= tt :tetrachromat) ",tetrachromat"
+           (cond (= tt :tetrachromat)
+                 (str ",tetrachromat[" (:A cone-makeup)
+                      "," (Math/round (double (:A (:lambda-max params)))) "]")
                  (= tt :dichromat) ",dichromat"
                  :else ""))
          "].bin")))
@@ -153,8 +218,8 @@
     (doseq [image-count samples
             run runs]
       (if verbose
-        (println (format "Simulating %d retinas with %d samples from cache %s (run = %d)..."
-                         (count my-retinas) image-count hs-cache-filename run)))
+        (println (format "Simulating %d retinas with %d samples from cache %s (run = %s)..."
+                         (count my-retinas) image-count hs-cache-filename (str run))))
       (let [[inits analfns finfns] (make-analysis save-every
                                                   output-dir
                                                   (when verbose print-every)
