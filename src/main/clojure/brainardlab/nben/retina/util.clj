@@ -28,6 +28,16 @@
                  :samples [2500000]
                  :runs [1 2]
                  :save-every 100000}
+      :missed   {:surrounds [[0.25 3.0]]
+                 :L-to-Ms [[8 1] [4 1] [1 2] [1 4] [1 8]]
+                 :M-lambda-maxs [530.3 535 540 545 550 555]
+                 :L-lambda-maxs [558.9]
+                 :S-lambda-maxs [420.7]
+                 :sizes [20]
+                 :S-cone-flags [:human]
+                 :samples [2500000]
+                 :runs [1 2]
+                 :save-every 100000}
       :standard {:surrounds [[0.25 3.0] nil]
                  :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
                  :M-lambda-maxs [530.3 535 540 545 550 555]
