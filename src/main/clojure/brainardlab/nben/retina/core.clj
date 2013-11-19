@@ -46,7 +46,7 @@
         deps (if blur
                (map (fn [x0-and-y0]
                       (filter #(> (nth % 2) eps)
-                              (for [row (range height), col (range width)]
+                              (for [row (range 1 (inc height)), col (range 1 (inc width))]
                                 [row col (normal-2D x0-and-y0 [col row] blur)])))
                     xy)
                (map (fn [[x y]]
