@@ -71,6 +71,17 @@
                  :samples [2500000]
                  :runs [0]
                  :save-every 100000}
+     :periphery {:surrounds [[0.25 3.0] nil]
+                 :L-to-Ms [[16 1] [4 1] [1 1] [1 4] [1 16]]
+                 :M-lambda-maxs [530.3]
+                 :L-lambda-maxs [558.9]
+                 :S-lambda-maxs [420.7]
+                 :sizes [40]
+                 :spacings [2 4]
+                 :S-cone-flags [:human]
+                 :samples [2500000]
+                 :runs ["periphery"]
+                 :save-every 100000}
      :LM-only   {:surrounds [[0.25 3.0] nil]
                  :L-to-Ms [[16 1] [4 1] [1 1] [1 4] [1 16]]
                  :M-lambda-maxs [530.3]
@@ -91,7 +102,12 @@
               L-lambda-max (get plan :L-lambda-maxs [558.9])
               S-lambda-max (get plan :S-lambda-maxs [420.7])
               A-lambda-max (get plan :A-lambda-maxs [545.0])]
-          {:L L-lambda-max :M M-lambda-max :S S-lambda-max :A A-lambda-max})]
+          {:L L-lambda-max :M M-lambda-max :S S-lambda-max :A A-lambda-max})
+        mosaics
+        (for [retina-size (get plan :sizes [20])
+              spacing (get plan :spacings [1])
+              blur (get plan :blurs)]
+          (mosaic :size retina-size :blur blur :spacing spacing))]
     (for [retina-type (get plan :types [:trichromat])
           surround (get plan :surrounds [[0.25 3.0]])
           L-to-M (cond (= retina-type :trichromat) (get plan :L-to-Ms [[1 1]])
@@ -99,8 +115,7 @@
                        (= retina-type :dichromat) [1]
                        :else (throw (IllegalArgumentException. "invalid type")))
           S-cone-flags (get plan :S-cone-flags [:human])
-          retina-size (get plan :sizes [20])
-          blur (get plan :blurs [nil])
+          mosaic mosaics
           lmaxs (loop [q cone-lambda-maxs, res #{}]
                   (if (nil? q)
                     (if (= S-cone-flags :none)
@@ -113,7 +128,7 @@
                                        (= retina-type :dichromat) (dissoc (first q) :A :M))))))]
       (retina :type retina-type
               :surround surround
-              :mosaic (mosaic :size retina-size :blur blur)
+              :mosaic mosaic
               :cones (cond (= retina-type :trichromat) [:L :M :S]
                            (= retina-type :tetrachromat) [:L :A :M :S]
                            (= retina-type :dichromat) [:L :S])
