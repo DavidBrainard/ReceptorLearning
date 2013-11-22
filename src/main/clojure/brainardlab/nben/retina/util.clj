@@ -117,7 +117,7 @@
         mosaics
         (for [retina-size (get plan :sizes [20])
               spacing (get plan :spacings [1])
-              blur (get plan :blurs)]
+              blur (get plan :blurs [nil])]
           (mosaic :size retina-size :blur blur :spacing spacing))]
     (for [retina-type (get plan :types [:trichromat])
           surround (get plan :surrounds [[0.25 3.0]])
@@ -140,9 +140,12 @@
       (retina :type retina-type
               :surround surround
               :mosaic mosaic
-              :cones (cond (= retina-type :trichromat) [:L :M :S]
-                           (= retina-type :tetrachromat) [:L :A :M :S]
-                           (= retina-type :dichromat) [:L :S])
+              :cones (let [start-cones (cond (= retina-type :trichromat) [:L :M :S]
+                                             (= retina-type :tetrachromat) [:L :A :M :S]
+                                             (= retina-type :dichromat) [:L :S])]
+                       (if (= :none S-cone-flags)
+                         (butlast start-cones)
+                         start-cones))
               :cone-makeup (let [allbutS (cond (= retina-type :trichromat)
                                                {:L (first L-to-M)
                                                 :M (fnext L-to-M)}
@@ -158,7 +161,8 @@
                                    (and (number? S-cone-flags) (> S-cone-flags 0))
                                    (assoc allbutS :S S-cone-flags)
                                    :else (throw (IllegalArgumentException. "invalid s-cone flag"))))
-              :lambda-max lmaxs))))
+              :lambda-max (cond (= S-cone-flags :none) (dissoc lmaxs :S)
+                                :else lmaxs)))))
 
 ;; yields a filename for writing out a simulation
 (defn simulation-filename [r image-count run-id]
