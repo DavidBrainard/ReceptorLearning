@@ -82,6 +82,17 @@
                  :samples [2500000]
                  :runs ["periphery"]
                  :save-every 100000}
+     :spectral-spacing
+                {:surrounds [[0.25 3.0] nil]
+                 :L-to-Ms [[16 1] [4 1] [1 1] [1 4] [1 16]]
+                 :M-lambda-maxs [530.3]
+                 :L-lambda-maxs [489.8]
+                 :S-lambda-maxs [420.7]
+                 :sizes [20]
+                 :S-cone-flags [:human]
+                 :samples [2500000]
+                 :runs ["spectral_spacing"]
+                 :save-every 100000}
      :LM-only   {:surrounds [[0.25 3.0] nil]
                  :L-to-Ms [[16 1] [4 1] [1 1] [1 4] [1 16]]
                  :M-lambda-maxs [530.3]
@@ -90,7 +101,7 @@
                  :sizes [20]
                  :S-cone-flags [:none]
                  :samples [2500000]
-                 :runs [0]
+                 :runs ["LM-dichromat"]
                  :save-every 100000}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
