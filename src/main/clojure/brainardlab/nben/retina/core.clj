@@ -5,7 +5,8 @@
 
 (ns brainardlab.nben.retina.core
   (:use brainardlab.nben.retina.constants)
-  (:use clojure.contrib.generic.math-functions))
+  (:use clojure.contrib.generic.math-functions)
+  (:use incanter.stats))
 
 ;; Retinas are basically just maps; they store all the necessary information for a retina.  All of
 ;; the private functions in this file assume that sanity checking has been done thus run as fast
@@ -85,36 +86,46 @@
                  (vec (map #(/ % w) sig)))))
            scaled-deps))))
 
-(defn- surround-fn [xy surround eps]
-  (if surround
-    (let [idx (range (count xy))
-          [weight std] (cond (and (coll? surround) (= (count surround) 2)) surround
-                             (= :automatic surround) [0.25 3]
-                             (number? surround) [0.25 surround]
-                             :else (arg-err "Invalid :surround argument"))
-          surr (map (fn [x0-and-y0]
-                      (let [comps (filter #(> (first %) eps)
-                                          (map (fn [x-and-y cone-index]
-                                                 [(if (= x-and-y x0-and-y0)
-                                                    0
-                                                    (normal-2D x0-and-y0 x-and-y std))
-                                                  cone-index])
-                                               xy
-                                               idx))
-                            scaling-factor (/ weight (reduce #(+ %1 (first %2)) 0 comps))]
-                        (map (fn [[cone-weight idx]] [(* cone-weight scaling-factor) idx])
-                             comps)))
-                  xy)]
+(defn- surround-fn [xy surround noise eps]
+  (let [n (count xy)
+        surr-fn
+        (if surround
+          (let [idx (range n)
+                [weight std] (cond (and (coll? surround) (= (count surround) 2)) surround
+                                   (= :automatic surround) [0.25 3]
+                                   (number? surround) [0.25 surround]
+                                   :else (arg-err "Invalid :surround argument"))
+                surr (map (fn [x0-and-y0]
+                            (let [comps (filter #(> (first %) eps)
+                                                (map (fn [x-and-y cone-index]
+                                                       [(if (= x-and-y x0-and-y0)
+                                                          0
+                                                          (normal-2D x0-and-y0 x-and-y std))
+                                                        cone-index])
+                                                     xy
+                                                     idx))
+                                  scaling-factor (/ weight (reduce #(+ %1 (first %2)) 0 comps))]
+                              (map (fn [[cone-weight idx]] [(* cone-weight scaling-factor) idx])
+                                   comps)))
+                          xy)]
+            (fn [sig]
+              (map (fn [center-cone-surround center-cone-index]
+                     (reduce -
+                             (nth sig center-cone-index)
+                             (map (fn [[cone-weight cone-index]]
+                                    (* cone-weight (nth sig cone-index)))
+                                  center-cone-surround)))
+                   surr
+                   idx)))
+          identity)]
+    (if noise
       (fn [sig]
-        (map (fn [center-cone-surround center-cone-index]
-               (reduce -
-                       (nth sig center-cone-index)
-                       (map (fn [[cone-weight cone-index]]
-                              (* cone-weight (nth sig cone-index)))
-                            center-cone-surround)))
-             surr
-             idx)))
-    identity))
+        (let [pre-noise (surr-fn sig)
+              mu (/ (reduce + pre-noise) n)
+              mu2 (/ (reduce #(+ %1 (* %2 %2)) 0 pre-noise) n)
+              sd (sqrt (- mu2 (* mu mu)))]
+          (map + pre-noise (sample-normal n :sd (* noise sd)))))
+      surr-fn)))
 
 (defn mosaic
   "Yields a mosaic given the parameters provided.  Mosaics are stored as vectors or 2-element
@@ -549,6 +560,9 @@
    :surround (default :automatic), declares the type of surround suppression; nil indicates none,
      otherwise may be a standard deviation (in which case 0.25 is the assumed weigh) or [weight
      standard-deviation].
+   :noise (default :none), declares the fraction of a signal's standard deviation should be used
+     as the standard deviation for a random variate that is added to the signal. E.g., :noise 0.03
+     indicates that 3% of the signal's standard deviation should be added back as noise.
    :type (default :trichromat), indicates which kind of default values should be used for the 
      above options.  A value of nil uses the default options; other allowed values are
      :tetrachromat and :dichromat.  Additionally, :Bayer will produce a Bayer-like rectilinear
@@ -556,8 +570,8 @@
   {:version "1.0"
    :added "1.0"
    :author "Noah C. Benson"}
-  [& {:keys [mosaic cones lambda-max cone-makeup type pixel-epsilon surround]
-      :or {mosaic :rectilinear, cones :automatic, lambda-max :automatic,
+  [& {:keys [mosaic cones lambda-max cone-makeup type pixel-epsilon surround noise]
+      :or {mosaic :rectilinear, cones :automatic, lambda-max :automatic, :noise :none
            cone-makeup :automatic, type :trichromat, pixel-epsilon 0.001, surround :automatic}}]
   (let ;; first we parse the params into something sanity-checked; for this we make a temp
       [eps (or (and (number? pixel-epsilon)
@@ -565,6 +579,9 @@
                     (< pixel-epsilon 0.5)
                     pixel-epsilon)
                (arg-err ":pixel-epsilon must be a number >= 0 and < 0.5"))
+       noise (cond (or (not noise) (= noise 0) (= noise :none)) nil
+                   (and (number? noise) (> noise 0)) noise
+                   :else (arg-err ":noise option to retina is not recognized"))
        base (case type :trichromat {:cones [:L :M :S]
                                     :lambda-max human-lambda-max
                                     :cone-makeup human-cone-makeup
@@ -622,7 +639,7 @@
      :mosaic M
      :spectral-sensitivities (spectral-sensitivities C Lmax) ;; make spectra
      :labels lbls ;; make labels
-     :surround-fn (surround-fn (:coordinates M) surround eps)
+     :surround-fn (surround-fn (:coordinates M) surround noise eps)
      :params {:type type
               :lambda-max lambda-max
               :pixel-epsilon pixel-epsilon

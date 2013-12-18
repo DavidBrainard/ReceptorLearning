@@ -7,7 +7,8 @@
   ;; dependencies
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/clojure-contrib "1.2.0"]
-                 [net.sourceforge.jmatio/jmatio "1.0"]]
+                 [net.sourceforge.jmatio/jmatio "1.0"]
+                 [incanter "1.5.4"]]
   :resource-paths ["resources/mdsj.jar"]
   ;; we want to be able to use large amounts of memory
   :jvm-opts ["-Xmx7G"]

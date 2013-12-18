@@ -59,6 +59,17 @@
                  :samples [2500000]
                  :runs ["blur_2"]
                  :save-every 100000}
+      :noise    {:surrounds [[0.25 3.0]]
+                 :L-to-Ms [[16 1] [4 1] [1 1] [1 4] [1 16]]
+                 :M-lambda-maxs [530.3 540 550]
+                 :L-lambda-maxs [558.9]
+                 :S-lambda-maxs [420.7]
+                 :sizes [20]
+                 :S-cone-flags [:human]
+                 :samples [2500000]
+                 :noises [0.01 0.05]
+                 :runs [0]
+                 :save-every 100000}
       :ditetra  {:surrounds [[0.25 3.0] nil]
                  :L-to-A-to-Ms [[4 1 1] [2 2 1] [2 1 2] [1 1 1] [1 2 2] [1 1 4]]
                  :M-lambda-maxs [530.3]
@@ -121,6 +132,7 @@
           (mosaic :size retina-size :blur blur :spacing spacing))]
     (for [retina-type (get plan :types [:trichromat])
           surround (get plan :surrounds [[0.25 3.0]])
+          noise (get plan :noises [nil])
           L-to-M (cond (= retina-type :trichromat) (get plan :L-to-Ms [[1 1]])
                        (= retina-type :tetrachromat) (get plan :L-to-A-to-Ms [[1 1 1]])
                        (= retina-type :dichromat) [1]
@@ -139,6 +151,7 @@
                                        (= retina-type :dichromat) (dissoc (first q) :A :M))))))]
       (retina :type retina-type
               :surround surround
+              :noise noise
               :mosaic mosaic
               :cones (let [start-cones (cond (= retina-type :trichromat) [:L :M :S]
                                              (= retina-type :tetrachromat) [:L :A :M :S]
@@ -182,6 +195,7 @@
                    (str s "_" 3.0)
                    (str (first s) "_" (fnext s)))
                  "none"))
+        noise (if-let [n (:noise params)] (str ",noise=" n) "")
         mosaic (:mosaic r)
         mparams (:params mosaic)
         sz (:size mosaic)
@@ -192,6 +206,7 @@
          ",L:M=" L-M
          ",Mlm=" Mlm
          ",surround=" surr
+         noise
          ",samples=" image-count
          ",run=" run-id
          (let [tt (:type (:params r))]
