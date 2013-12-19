@@ -232,13 +232,15 @@
          s (map #(/ % max-s) pre-s)
          steps (get opts :steps-per-signal) ;; how many steps we run each signal
          nmem (get opts :memory) ;; the amount of memory for each cone
-         k (mod (get opts :k) nmem) ;; the place we're putting this signal in the memory
+         k0 (get opts :k)
+         k (mod k0 nmem) ;; the place we're putting this signal in the memory
          dfn (get opts :distance-fn) ;; ideal distance between cones by response angle cos
          strength (get opts :spring-strength) ;; strength of a spring
          dampen (- 1.0 (get opts :dampen))
          dt (get opts :timestep)
          dt2 (* dt dt)
-         [startX startV M] cones]
+         [startX startV M] cones
+         step-mon (get opts :step-monitor)]
      ;; update memory...
      (doall (map #(aset %1 k (float %2)) M s))
      ;; make a similarity matrix (ideal distances)
@@ -248,6 +250,7 @@
                                        (dfn (/ (reduce + (map * m1 m2)) (* n1 n2))))
                                      M norms)))
                          M norms)))]
+       (if step-mon (step-mon k0 startX startV))
        ;; recur (after running the simulation loops)
        (recur
         (next signals)
@@ -286,7 +289,7 @@
   "Yields a simulation of the retinas (using simulate-retinas), but wraps the call such that all
    analysis is done using Hebbian learning implemeted by spring simulation."
   [retinas hs-database & {:keys [memory image-count dampen timestep steps-per-signal
-                                 spring-strength distance-fn]
+                                 spring-strength distance-fn step-monitor]
                           :or {memory 20 image-count 1000 dampen 0.05 timestep 0.01
                                steps-per-signal 10 spring-strength 1
                                distance-fn (let [c (Math/exp -2.0)]
@@ -307,6 +310,7 @@
                                        :steps-per-signal steps-per-signal
                                        :spring-strength spring-strength
                                        :distance-fn distance-fn
+                                       :step-monitor step-monitor
                                        :k 0})
      :full-reduce false)))
 

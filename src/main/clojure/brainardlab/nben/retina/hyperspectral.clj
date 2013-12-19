@@ -196,7 +196,7 @@
                                          (if (not (f r c)) (assoc! (nth ex r) c true)))
                                        ex)
                                    (next q))
-                            :else (arg-err "Bad exclusion to push-to-cache")))))}))
+                            :else (arg-err "Bad exclusion to hyperspectral-image")))))}))
   
 (defmacro build-hyperspectral-cache
   "Used to build hyperspectral image caches.  The body is executed such that any call to the
@@ -332,6 +332,40 @@
     (when (javax.imageio.ImageIO/write (hyperspectral-to-RGB hsimage) "PNG" fl)
       fl)))
 
+(defn use-png-as-hyperspectral-mask
+  "Given a hyerspectral image and the filename, file object, or BufferedImage object for a PNG file,
+   uses the png file as a mask, where the :exclude-color option (default 0/black) is used as a clue
+   that the hyperspectral pixel will be excluded, and yields a version of hsimage that is suitable
+   for use with push-to-cache with the proper exclusions. Note that the images must be the same size
+   or an error is thrown."
+  [hsimage png-file &{:keys [exclude-color wavelengths] :or {exclude-color 0}}]
+  (let [png (cond (instance? java.io.File png-file) (javax.imageio.ImageIO/read png-file)
+                  (string? png-file) (javax.imageio.ImageIO/read (java.io.File. png-file))
+                  (instance? java.awt.image.BufferedImage png-file) png-file
+                  :else (arg-err "png-file must be a filename, File, or BufferedImage"))
+        [rows cols imgfn] (cond (instance? brainardlab.nben.retina.jvm.HSImage hsimage)
+                                (assoc (hsimage) 2 hsimage)
+                                (and (map? hsimage) (contains? hsimage :image-fn))
+                                [(:rows hsimage) (:cols hsimage) (:image-fn hsimage)]
+                                (or (coll? hsimage) (seq? hsimage))
+                                (let [v (or (and (vector? hsimage) hsimage) (vec hsimage))]
+                                  [(count hsimage)
+                                   (count (first hsimage))
+                                   #(nth (nth hsimage %1) %2)])
+                                :else (arg-err "Unrecognized image format"))
+        exclude (repeatedly rows #(byte-array cols))]
+    (if (or (not= (.getHeight png) rows) (not= (.getWidth png) cols))
+      (arg-err "hyperspectral image and png file must be the same size: "
+               [rows cols] [(.getHeight png) (.getWidth png)])
+      (loop [erow (seq exclude), ecol 0, r 0, c 0]
+        (cond (>= c cols) (recur (next erow) 0 (inc r) 0)
+              (>= r rows) (hyperspectral-image imgfn [rows cols]
+                                               :filter [exclude] :wavelengths wavelengths)
+              :else (do (if (= exclude-color (bit-and 0xffffff (.getRGB png c r)))
+                          (aset-byte (first erow) ecol 0)
+                          (aset-byte (first erow) ecol 1))
+                        (recur erow (inc ecol) r (inc c))))))))
+
 (defn count-patches-in-image
   "Yields the number of patches of size patch-height x patch-width in a height x width image"
   ([height width patch-height patch-width]
@@ -445,6 +479,56 @@
                   patches-per-image
                   total-patches-per-image
                   (first patches-per-image))))))
+
+;; Function for calculating the statistics of the hyperspectral images in the database
+(defn calculate-hyperspectral-cache-statistics
+  "(calculate-hyperspectral-cache-statistics h max) yields a seq of seqs; each element of the outer
+     seq is a single distance/wavelength-difference pair represented by a seq of [distance
+     absolute-difference-in-wavelength correlation]. Distances out to a maximum distance of
+     sqrt(2)*max are calculated (ie, a distance of max rows and max columns away).
+   (calculate-hyperspectral-cache-statistics h) is equivalent to
+     (calculate-hyperspectral-cache-statistics h 20)."
+  ([cache] (calculate-hyperspectral-cache-statistics cache 20))
+  ([cache max]
+     (let [zeros [0 0 0 0 0 0]
+           allcomb (filter #(let [[[r0 c0 w0] [r c w]] %]
+                              (not (or (< r r0) (< c c0) (< w w0)
+                                       (and (= r r0) (= c c0) (= w w0))
+                                       (>= r0 20) (>= c0 20) (>= w0 33))))
+                           (doseq [r0 (range max), c0 (range max), w0 (range 33),
+                                   r (range max), c (range max), w (range 33)]
+                             [[r0 c0 w0] [r c w]]))
+           r (pmap
+              (fn [sublist]
+                (persistent!
+                 (reduce (fn [res patch]
+                           (loop [s (seq allcomb)]
+                             (if s
+                               (let [[[r0 c0 w0] [r c w]] (first s)
+                                     dr (- r r0) dc (- c c0) dw (- w w0)
+                                     pos [(sqrt (+ (* dr dr) (* dc dc))) dw]
+                                     current (.valAt res pos zeros)
+                                     val0 (nth (nth (nth patch r0) c0) w0)
+                                     val (nth (nth (nth patch r) c) w)]
+                                 (assoc! res
+                                   pos (map + current
+                                            [val0 val
+                                             (* val0 val0) (* val val)
+                                             (* val val0) 1]))
+                                 (recur (next s)))
+                               res)))
+                              (transient {})
+                              sublist)))
+              (partition 1000 (draw-patches cache 200 20 20)))
+           r (reduce (fn [map1 map2]
+                       (reduce (fn [[key v2]]
+                                 (let [v1 (get map1 key)]
+                                   (cond (and v1 v2) (assoc map1 key (map + v1 v2))
+                                         v2 (assoc map1 key v2)
+                                         :else map1)))
+                               (seq map2)))
+                     r)]
+       r)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Matlab functions

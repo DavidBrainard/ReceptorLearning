@@ -6,6 +6,7 @@
 
 package brainardlab.nben.retina.jvm;
 import clojure.lang.*;
+import java.util.Random;
 
 public final class HSImage
    extends AFn implements Seqable
@@ -285,5 +286,92 @@ public final class HSImage
    public ISeq seq()
    {
       return m_data.all();
+   }
+
+   /** Yields a clojure IPersistentMap of [pixel-distance wavelength-difference] mapped to 
+    *  a correlation.
+    *
+    *  @param maxDist The maximum distance in terms of rows or columns to collect.
+    *  @param numSamples The maximum of pairs of pixels to collect.
+    */
+   public IPersistentMap collectStatistics(int maxDist, int numSamples)
+   {
+      if (maxDist < 1 || numSamples < 2)
+         throw new IllegalArgumentException("maxDist and numSamples must be > 1 and > 2");
+      ITransientMap result = PersistentHashMap.EMPTY.asTransient();
+      IPersistentMap pres;
+      ISeq qhold1, qhold2, q1, q2;
+      int r, c, mnr, mxr, mnc, mxc, rr, cc, w1, w2;
+      Random rand = new Random();
+      IPersistentVector v;
+      float f1, f2;
+      Object tmp;
+      double[] dat;
+      MapEntry me;
+      double d;
+      for (int sampleNum = 0; sampleNum < numSamples; ++sampleNum) {
+         r = rand.nextInt(m_rows) + m_row0;
+         c = rand.nextInt(m_cols) + m_col0;
+         mnr = (r - maxDist < m_row0 ? m_row0 : r - maxDist);
+         mxr = (r + maxDist > m_rows? m_rows : r + maxDist);
+         mnc = (c - maxDist < m_col0? m_col0 : c - maxDist);
+         mxc = (c + maxDist > m_cols? m_cols : c + maxDist);
+         qhold1 = m_data.get(r, c);
+         for (rr = mnr; rr < mxr; ++rr) {
+            for (cc = mnc; cc < mxc; ++cc) {
+               if (rr == r && cc == c) continue;
+               qhold2 = m_data.get(rr, cc);
+               d = (r - rr)*(r - rr) + (c - cc)*(c - cc);
+               v = PersistentVector.create(new Double(d), new Integer(0));
+               w1 = 0;
+               q1 = qhold1;
+               while (w1 < m_wlens) {
+                  f1 = ((Number)q1.first()).floatValue();
+                  w2 = 0;
+                  q2 = qhold2;
+                  while (w2 < m_wlens) {
+                     f2 = ((Number)q2.first()).floatValue();
+                     v = v.assocN(1, new Integer(w1 > w2? w1 - w2 : w2 - w1));
+                     tmp = result.valAt(v);
+                     if (tmp == null) {
+                        dat = new double[6];
+                        result.assoc(v, dat);
+                     } else 
+                        dat = (double[])tmp;
+                     dat[0] = dat[0] + 1.0;
+                     dat[1] = dat[1] + f1;
+                     dat[2] = dat[2] + f2;
+                     dat[3] = dat[3] + f1*f1;
+                     dat[4] = dat[4] + f2*f2;
+                     dat[5] = dat[5] + f1*f2;
+                     ++w2;
+                     q2 = q2.next();
+                  }
+                  ++w1;
+                  q1 = q1.next();
+               }
+            }
+         }
+      }
+      double eX, eY, eXX, eYY, eXY, varX, varY, cov, corr;
+      pres = result.persistent();
+      IPersistentMap finalized = PersistentHashMap.EMPTY;
+      for (q1 = pres.seq(); q1 != null; q1 = q1.next()) {
+         me = (MapEntry)q1.first();
+         v = (IPersistentVector)me.key();
+         dat = (double[])me.val();
+         eX = dat[1] / dat[0];
+         eY = dat[2] / dat[0];
+         eXX = dat[3] / dat[0];
+         eYY = dat[4] / dat[0];
+         eXY = dat[5] / dat[0];
+         varX = eXX - eX*eX;
+         varY = eYY - eY*eY;
+         cov = eXY - eX*eY;
+         corr = cov / Math.sqrt(varX * varY);
+         v.assocN(0, Math.sqrt(((Double)v.nth(0)).doubleValue()));
+         finalized = finalized.assoc(v, new Double(corr));
+      }
+      return finalized;
    }
 }
