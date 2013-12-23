@@ -294,7 +294,7 @@ public final class HSImage
     *  @param maxDist The maximum distance in terms of rows or columns to collect.
     *  @param numSamples The maximum of pairs of pixels to collect.
     */
-   public IPersistentMap collectStatistics(int maxDist, int numSamples)
+   public IPersistentMap collectStatistics(int maxDist, int numSamples, boolean full)
    {
       if (maxDist < 1 || numSamples < 2)
          throw new IllegalArgumentException("maxDist and numSamples must be > 1 and > 2");
@@ -310,8 +310,10 @@ public final class HSImage
       MapEntry me;
       double d;
       for (int sampleNum = 0; sampleNum < numSamples; ++sampleNum) {
-         r = rand.nextInt(m_rows) + m_row0;
-         c = rand.nextInt(m_cols) + m_col0;
+         if (m_rows - m_row0 < 2*maxDist + 2 || m_cols - m_col0 < 2*maxDist + 2)
+            continue;
+         r = rand.nextInt(m_rows - 2*maxDist - 1) + m_row0 + maxDist;
+         c = rand.nextInt(m_cols - 2*maxDist - 1) + m_col0 + maxDist;
          mnr = (r - maxDist < m_row0 ? m_row0 : r - maxDist);
          mxr = (r + maxDist > m_rows? m_rows : r + maxDist);
          mnc = (c - maxDist < m_col0? m_col0 : c - maxDist);
@@ -355,6 +357,7 @@ public final class HSImage
       }
       double eX, eY, eXX, eYY, eXY, varX, varY, cov, corr;
       pres = result.persistent();
+      if (full) return pres;
       IPersistentMap finalized = PersistentHashMap.EMPTY;
       for (q1 = pres.seq(); q1 != null; q1 = q1.next()) {
          me = (MapEntry)q1.first();
@@ -373,5 +376,9 @@ public final class HSImage
          finalized = finalized.assoc(v, new Double(corr));
       }
       return finalized;
+   }
+   public IPersistentMap collectStatistics(int maxDist, int numSamples)
+   {
+      return collectStatistics(maxDist, numSamples, false);
    }
 }
