@@ -41,7 +41,7 @@
        (Math/sqrt (double (* Math/PI 2.0 sigma))))))
 
 ;; Used by mosaic and retina to create signal functions for mosaics
-(defn- signal-fn [xy size blur eps]
+(defn- signal-fn [xy size blur indices eps]
   (let [[height width] (or size [(ceil (- (max (map fnext xy)) eps))
                                  (ceil (- (max (map first xy)) eps))])
         deps (if blur
@@ -74,40 +74,66 @@
         scaled-deps (map (fn [dep wtot]
                            (map (fn [[r c w]] [r c (/ w wtot)]) dep))
                          deps weight-total)]
-    (fn [image]
-      (map (fn [dep]
-             (loop [s dep, w 0.0, sig nil]
-               (if s
-                 (let [[row col weight] (first s)
-                       spec (map #(* % weight) (nth (nth image (dec row)) (dec col)))]
-                   (recur (next s)
-                          (+ w weight)
-                          (if sig (map + sig spec) spec)))
-                 (vec (map #(/ % w) sig)))))
-           scaled-deps))))
+    (if indices
+      (let [idcs (vec indices), nidcs (count idcs)
+            zeros (vec (repeat 33 0))]
+        (fn [image]
+          (let [layer (nth idcs (rand-int nidcs))]
+            (map (fn [dep]
+                   (loop [s dep, w 0.0, sig 0]
+                     (if s
+                       (let [[row col weight] (first s)
+                             spec (* weight (nth (nth (nth image (dec row)) (dec col)) layer))]
+                         (recur (next s)
+                                (+ w weight)
+                                (+ sig spec)))
+                       (assoc zeros layer (/ sig w)))))
+                 scaled-deps))))
+      (fn [image]
+        (map (fn [dep]
+               (loop [s dep, w 0.0, sig nil]
+                 (if s
+                   (let [[row col weight] (first s)
+                         spec (map #(* % weight) (nth (nth image (dec row)) (dec col)))]
+                     (recur (next s)
+                            (+ w weight)
+                            (if sig (map + sig spec) spec)))
+                   (vec (map #(/ % w) sig)))))
+             scaled-deps)))))
 
-(defn- surround-fn [xy surround noise eps]
+(defn- surround-fn [xy labels surround noise eps]
   (let [n (count xy)
         surr-fn
         (if surround
           (let [idx (range n)
-                [weight std] (cond (and (coll? surround) (= (count surround) 2)) surround
-                                   (= :automatic surround) [0.25 3]
-                                   (number? surround) [0.25 surround]
-                                   :else (arg-err "Invalid :surround argument"))
-                surr (map (fn [x0-and-y0]
+                [weight std opponent?]
+                (cond (and (coll? surround) (= (count surround) 2)) (conj (vec surround) false)
+                      (and (coll? surround) (= (count surround) 3)) surround
+                      (and (coll? surround) (= (count surround) 1)) [0.25 (first surround) false]
+                      (= :automatic surround) [0.25 3 false]
+                      (number? surround) [0.25 surround false]
+                      :else (arg-err "Invalid :surround argument"))
+                surr (map (fn [x0-and-y0 label0]
                             (let [comps (filter #(> (first %) eps)
-                                                (map (fn [x-and-y cone-index]
-                                                       [(if (= x-and-y x0-and-y0)
-                                                          0
-                                                          (normal-2D x0-and-y0 x-and-y std))
-                                                        cone-index])
-                                                     xy
-                                                     idx))
+                                                (map
+                                                 (if opponent?
+                                                   (fn [x-and-y label cone-index]
+                                                     [(cond
+                                                       (= label0 label) 0
+                                                       (= label :S) 0
+                                                       :else (normal-2D x0-and-y0 x-and-y std))
+                                                      cone-index])
+                                                   (fn [x-and-y label cone-index]
+                                                     [(if (= x-and-y x0-and-y0)
+                                                        0
+                                                        (normal-2D x0-and-y0 x-and-y std))
+                                                      cone-index]))
+                                                 xy labels idx))
                                   scaling-factor (/ weight (reduce #(+ %1 (first %2)) 0 comps))]
                               (map (fn [[cone-weight idx]] [(* cone-weight scaling-factor) idx])
                                    comps)))
-                          xy)]
+                          xy
+                          labels)]
             (fn [sig]
               (map (fn [center-cone-surround center-cone-index]
                      (reduce -
@@ -122,9 +148,10 @@
       (fn [sig]
         (let [pre-noise (surr-fn sig)
               mu (/ (reduce + pre-noise) n)
-              mu2 (/ (reduce #(+ %1 (* %2 %2)) 0 pre-noise) n)
-              sd (sqrt (- mu2 (* mu mu)))]
-          (map + pre-noise (sample-normal n :sd (* noise sd)))))
+              ;mu2 (/ (reduce #(+ %1 (* %2 %2)) 0 pre-noise) n)
+              ;sd (sqrt (- mu2 (* mu mu)))
+              ]
+          (map + pre-noise (sample-normal n :sd (* noise mu)))))
       surr-fn)))
 
 (defn mosaic
@@ -149,11 +176,17 @@
     :x0 (default: 1.0) specifies the starting x-value used in tiling the space.
     :y0 (default: 1.0) specifies the starting y-value used in tiling the space.
     :blur (default: nil) specifies the standard deviation of a blurring Gaussian, if any, to use on
-       input images when calculating the response signal."
+       input images when calculating the response signal.
+    :spectral-indices (default: nil) should be nil for a normal simulation; these may be set to
+       imitate the conditions described in Sugita et al. (2004) Experience in early infancy is
+       indispensable for color perception. Curr. Biol. 14(14):1267-1271. The indices given are the
+       only wavelengths of the hyperspectral images that will be shown to the retina at each step,
+       and each wavelength given will be shown only by itself in turn. These indices should be
+       between 0 and 32 (inclusive) with 0 equivalent to 400 nm and 32 equivalent to 720 nm."
   {:version "1.0"
    :added "1.0"
    :author "Noah C. Benson"}
-  [&{:keys [layout filter size separation x0 y0 pixel-epsilon blur]
+  [&{:keys [layout filter size separation x0 y0 pixel-epsilon blur spectral-indices]
      :or {layout :rectilinear filter nil size 20 separation 1.0
           x0 1.0 y0 1.0 pixel-epsilon 0.001}}]
   (let [sep (or (and (number? separation)
@@ -215,7 +248,7 @@
               :separation separation :x0 x0 :y0 y0 :pixel-epsilon pixel-epsilon}
      :coordinates xy
      :size [height width]
-     :signal-fn (signal-fn xy [height width] blur eps)}))
+     :signal-fn (signal-fn xy [height width] blur spectral-indices eps)}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Spectra Code
@@ -559,7 +592,11 @@
      type to that of others should be drawn.
    :surround (default :automatic), declares the type of surround suppression; nil indicates none,
      otherwise may be a standard deviation (in which case 0.25 is the assumed weigh) or [weight
-     standard-deviation].
+     standard-deviation] or [weight standard-deviation opponent?]. In the latter of these, the
+     opponent? flag may be set to true (default if not specified is false) to indicate that the
+     surround should be composed of only opponent types. This requires that the S cones, at least,
+     be represented as :S in the labels, and will compose L-cone surrounds out of M-cones, M-cone
+     surrounds out of L-cones, and S-cone surrounds out of L- and M-cones.
    :noise (default :none), declares the fraction of a signal's standard deviation should be used
      as the standard deviation for a random variate that is added to the signal. E.g., :noise 0.03
      indicates that 3% of the signal's standard deviation should be added back as noise.
@@ -639,7 +676,7 @@
      :mosaic M
      :spectral-sensitivities (spectral-sensitivities C Lmax) ;; make spectra
      :labels lbls ;; make labels
-     :surround-fn (surround-fn (:coordinates M) surround noise eps)
+     :surround-fn (surround-fn (:coordinates M) lbls surround noise eps)
      :params {:type type
               :lambda-max lambda-max
               :pixel-epsilon pixel-epsilon
