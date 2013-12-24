@@ -212,6 +212,32 @@
                                                                        0 R a save-every)
                                           :full-reduce false)))
 
+(defn write-hebbian-simulation
+  "(write-hebbian-simulation output-filename retina hebbian-sim-result) writes information about
+   the given retina and result data produced by the Hebbian simulation to the file named by
+   output-filename."
+  [output-filename R H]
+  (let [[X V M] H
+        nmem (count (first M))
+        labels (get R :labels)
+        n (count labels)
+        coords (get (get R :mosaic) :coordinates)
+        rmap (loop [r {}, s (seq (get R :cones)), k 0]
+               (if s
+                 (recur (assoc r (first s) k) (next s) (inc k))
+                 r))]
+    (with-open [o (java.io.DataOutputStream. (java.io.FileOutputStream. output-filename))]
+      (.writeInt o n)
+      (.writeInt o nmem)
+      ;; cone types
+      (doseq [l labels] (.writeInt o (get rmap l)))
+      ;; coordinates
+      (doseq [c coords, x c] (.writeFloat o (float x)))
+      ;; hebbian sim stuff
+      (doseq [x X] (.writeFloat o (float (nth x 2))))
+      (doseq [v V] (.writeFloat o (float v)))
+      (doseq [m M, v m] (.writeFloat o (float v))))))
+
 (defn- hebbian-analysis [signals cones opts]
   (cond
    ;; end of analysis...
@@ -232,65 +258,70 @@
          s (map #(/ % max-s) pre-s)
          steps (get opts :steps-per-signal) ;; how many steps we run each signal
          nmem (get opts :memory) ;; the amount of memory for each cone
-         k0 (get opts :k)
-         k (mod k0 nmem) ;; the place we're putting this signal in the memory
+         k (mod (get opts :k) nmem) ;; the place we're putting this signal in the memory
          dfn (get opts :distance-fn) ;; ideal distance between cones by response angle cos
          strength (get opts :spring-strength) ;; strength of a spring
          dampen (- 1.0 (get opts :dampen))
          dt (get opts :timestep)
          dt2 (* dt dt)
          [startX startV M] cones
-         step-mon (get opts :step-monitor)]
+         step (get opts :step)]
+     (when (and (= 0 (mod step 10)) (:verbose opts))
+       (println "Step: " step)
+       (when (= 0 (mod step 10))
+         (when-let [save-dir (get opts :save-dir)]
+           (write-hebbian-simulation (format "%s/hebbian%07d.bin" save-dir step)
+                                     (:retina opts)
+                                     [startX startV M]))))
      ;; update memory...
-     (doall (map #(aset %1 k (float %2)) M s))
+     (doall (pmap #(aset %1 k (float %2)) M s))
      ;; make a similarity matrix (ideal distances)
      (let [S (let [norms (map (fn [m] (sqrt (reduce #(+ %1 (* %2 %2)) 0 m))) M)]
-               (vec (map (fn [m1 n1]
-                           (vec (map (fn [m2 n2]
-                                       (dfn (/ (reduce + (map * m1 m2)) (* n1 n2))))
-                                     M norms)))
-                         M norms)))]
-       (if step-mon (step-mon k0 startX startV))
+               (vec (pmap (fn [m1 n1]
+                            (vec (map (fn [m2 n2]
+                                        (dfn (/ (reduce + (map * m1 m2)) (* n1 n2))))
+                                      M norms)))
+                          M norms)))]
        ;; recur (after running the simulation loops)
        (recur
         (next signals)
         (loop [X0 startX, V0 startV, iter 0]
           (let [;; directions and distances between cones
-                D (vec (map (fn [x1]
-                              (vec (map (fn [x2]
-                                          (let [v (map - x2 x1)
-                                                d (sqrt (reduce #(+ %1 (* %2 %2)) 0 v))]
-                                            [d (if (or (= x1 x2) (= 0 d))
-                                                 0
-                                                 (/ (nth v 2) d))]))
-                                        X0)))
-                            X0))
+                D (vec (pmap (fn [x1]
+                               (vec (map (fn [x2]
+                                           (let [v (map - x2 x1)
+                                                 d (sqrt (reduce #(+ %1 (* %2 %2)) 0 v))]
+                                             [d (if (or (= x1 x2) (= 0 d))
+                                                  0
+                                                  (/ (nth v 2) d))]))
+                                         X0)))
+                             X0))
                 ;; get the accelerations
-                A (doall (map (fn [drow srow]
-                                (reduce + (map (fn [[d u] s] (* strength (- d s) u))
-                                               drow srow)))
-                              D S))
+                A (doall (pmap (fn [drow srow]
+                                 (reduce + (map (fn [[d u] s] (* strength (- d s) u))
+                                                drow srow)))
+                               D S))
                 ;; now, we update positions...
-                X (doall (map (fn [x0 v a]
-                                (assoc x0 2 (+ (nth x0 2) (* v dt) (* 0.5 dt2 a))))
+                X (doall (pmap (fn [x0 v a]
+                                 (assoc x0 2 (+ (nth x0 2) (* v dt) (* 0.5 dt2 a))))
                                         ;(vec (map #(+ %1 (* dt %2) (* dt2 0.5 %3))
                                         ;          x0 v a)))
-                              X0 V0 A))
+                               X0 V0 A))
                 ;; and the velocities
-                V (doall (map (fn [v0 a] (+ (* dampen v0) (* dt a)))
-                              V0 A))]
+                V (doall (pmap (fn [v0 a] (+ (* dampen v0) (* dt a)))
+                               V0 A))]
             ;; if we've done enough iterations, yield the result, otherwise, continue
             (if (< iter steps)
               (recur X V (inc iter))
               [X V M])))
-        (assoc opts :k (inc k)))))))
+        (assoc opts :k (inc k) :step (inc step)))))))
 
 (defn simulate-retinas-hebbian
   "Yields a simulation of the retinas (using simulate-retinas), but wraps the call such that all
    analysis is done using Hebbian learning implemeted by spring simulation."
   [retinas hs-database & {:keys [memory image-count dampen timestep steps-per-signal
-                                 spring-strength distance-fn step-monitor]
-                          :or {memory 20 image-count 1000 dampen 0.05 timestep 0.01
+                                 spring-strength distance-fn verbose save-dir]
+                          :or {memory 20 image-count 1000 dampen 0.05 timestep 0.001
                                steps-per-signal 10 spring-strength 1
                                distance-fn (let [c (Math/exp -2.0)]
                                              #(+ 2.0 (* 20.0 (- (Math/exp (* -2.0 %)) c))))}}]
@@ -310,7 +341,10 @@
                                        :steps-per-signal steps-per-signal
                                        :spring-strength spring-strength
                                        :distance-fn distance-fn
-                                       :step-monitor step-monitor
+                                       :verbose verbose
+                                       :save-dir save-dir
+                                       :retina ret1
+                                       :step 0
                                        :k 0})
      :full-reduce false)))
 
@@ -379,30 +413,4 @@
         (let [[bmuCoords weights] t]
           (doseq [coord bmuCoords, x coord] (.writeFloat o (float x)))
           (doseq [nrn weights, w nrn] (.writeFloat o (float w))))))))
-
-(defn write-hebbian-simulation
-  "(write-hebbian-simulation output-filename retina hebbian-sim-result) writes information about
-   the given retina and result data produced by the Hebbian simulation to the file named by
-   output-filename."
-  [output-filename R H]
-  (let [[X V M] H
-        nmem (count (first M))
-        labels (get R :labels)
-        n (count labels)
-        coords (get (get R :mosaic) :coordinates)
-        rmap (loop [r {}, s (seq (get R :cones)), k 0]
-               (if s
-                 (recur (assoc r (first s) k) (next s) (inc k))
-                 r))]
-    (with-open [o (java.io.DataOutputStream. (java.io.FileOutputStream. output-filename))]
-      (.writeInt o n)
-      (.writeInt o nmem)
-      ;; cone types
-      (doseq [l labels] (.writeInt o (get rmap l)))
-      ;; coordinates
-      (doseq [c coords, x c] (.writeFloat o (float x)))
-      ;; hebbian sim stuff
-      (doseq [x X] (.writeFloat o (float (nth x 2))))
-      (doseq [v V] (.writeFloat o (float v)))
-      (doseq [m M, v m] (.writeFloat o (float v))))))
 
