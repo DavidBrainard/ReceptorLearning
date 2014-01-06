@@ -71,8 +71,8 @@
                  :runs [0]
                  :save-every 100000}
      :opponent  {:surrounds [[0.25 3.0 true]]
-                 :L-to-Ms [[1 1]]
-                 :M-lambda-maxs [530.3]
+                 :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
+                 :M-lambda-maxs [530.3 535 540 545 550 555]
                  :L-lambda-maxs [558.9]
                  :S-lambda-maxs [420.7]
                  :sizes [20]
@@ -115,7 +115,7 @@
                  :runs ["periphery"]
                  :save-every 100000}
      :spectral-spacing
-                {:surrounds [[0.25 3.0] nil]
+                {:surrounds [[0.25 3.0]]
                  :L-to-A-to-Ms [[2 2 1] [2 1 2] [1 2 2] [1 1 1] [1 1 2] [1 2 1] [2 1 1]]
                  :L-lambda-maxs [558.9]
                  :M-lambda-maxs [512.8]
