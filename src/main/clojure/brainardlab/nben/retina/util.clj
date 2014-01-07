@@ -17,126 +17,174 @@
 
 ;; this is a list of simulation plans; it represents the kinds of simulations that get run based
 ;; on which simulation plan is requested
-(def simulation-plans
-     {:basic    {:surrounds [[0.25 3.0]]
-                 :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
-                 :M-lambda-maxs [530.3 535 540 545 550 555]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [20]
-                 :S-cone-flags [:human]
-                 :samples [2500000]
-                 :runs [1 2]
-                 :save-every 100000}
-      :standard {:surrounds [[0.25 3.0] nil]
-                 :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
-                 :M-lambda-maxs [530.3 535 540 545 550 555]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [20 15 10 5]
-                 :S-cone-flags [:human]
-                 :samples [2500000]
-                 :runs [0]
-                 :save-every 100000}
-      :blur     {:surrounds [[0.25 3.0] nil]
-                 :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
-                 :M-lambda-maxs [530.3 535 540 545 550 555]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [20]
-                 :S-cone-flags [:human]
-                 :samples [2500000]
-                 :runs ["blur_4"]
-                 :save-every 100000}
-      :noise5   {:surrounds [[0.25 3.0]]
-                 :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
-                 :M-lambda-maxs [530.3 535 540 545 550 555]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [20]
-                 :S-cone-flags [:human]
-                 :samples [2500000]
-                 :noises [0.05]
-                 :runs [0]
-                 :save-every 100000}
-     :noise1    {:surrounds [[0.25 3.0]]
-                 :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
-                 :M-lambda-maxs [530.3 535 540 545 550 555]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [20]
-                 :S-cone-flags [:human]
-                 :samples [2500000]
-                 :noises [0.01]
-                 :runs [0]
-                 :save-every 100000}
-     :opponent  {:surrounds [[0.25 3.0 true]]
-                 :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
-                 :M-lambda-maxs [530.3 535 540 545 550 555]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [20]
-                 :S-cone-flags [:human]
-                 :samples [2500000]
-                 :runs ["opponent"]
-                 :save-every 100000}
-      :Sugita   {:surrounds [[0.25 3.0]]
-                 :L-to-Ms [[1 1]]
-                 :M-lambda-maxs [530.3]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [20]
-                 :S-cone-flags [:human]
-                 :samples [2500000]
-                 :spectral-indices [[6 12 19 24]]
-                 :runs ["Sugita2004"]
-                 :save-every 100000}
-      :ditetra  {:surrounds [[0.25 3.0] nil]
-                 :L-to-A-to-Ms [[4 1 1] [2 2 1] [2 1 2] [1 1 1] [1 2 2] [1 1 4]]
-                 :M-lambda-maxs [530.3]
-                 :A-lambda-maxs [535.0 540.0 545.0 550.0 555.0]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [20]
-                 :S-cone-flags [:human]
-                 :types [:dichromat :tetrachromat]
-                 :samples [2500000]
-                 :runs [0]
-                 :save-every 100000}
-     :periphery {:surrounds [[0.25 3.0]]
-                 :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
-                 :M-lambda-maxs [535.0 540.0 545.0 550.0 555.0]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [40]
-                 :spacings [2]
-                 :S-cone-flags [:human]
-                 :samples [2500000]
-                 :runs ["periphery"]
-                 :save-every 100000}
-     :spectral-spacing
-                {:surrounds [[0.25 3.0]]
-                 :L-to-A-to-Ms [[2 2 1] [2 1 2] [1 2 2] [1 1 1] [1 1 2] [1 2 1] [2 1 1]]
-                 :L-lambda-maxs [558.9]
-                 :M-lambda-maxs [512.8]
-                 :A-lambda-maxs [466.8]
-                 :S-lambda-maxs [420.7]
-                 :types [:tetrachromat]
-                 :sizes [20]
-                 :S-cone-flags [:human]
-                 :samples [2500000]
-                 :runs ["spectral_spacing"]
-                 :save-every 100000}
-     :LM-only   {:surrounds [[0.25 3.0]]
-                 :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
-                 :M-lambda-maxs [530.3]
-                 :L-lambda-maxs [558.9]
-                 :S-lambda-maxs [420.7]
-                 :sizes [20]
-                 :S-cone-flags [:none]
-                 :samples [5000000]
-                 :runs ["tritanope"]
-                 :save-every 100000}})
+(def ^{:dynamic true
+       :doc (str "simulation-plans is a variable that describes all the simulations that can be run"
+                 " via the simulate-some-retinas function or the command line (via the main"
+                 " function. It is marked as dynamic, so you may dynamically rebind it to add"
+                 " simulation plans, or you may edit the code by hand (only way to change the"
+                 " simulations that can be run from the command line. The variable itself is a map"
+                 " of plan-id (a keyword) to a map of plan instructions. The instructions consist"
+                 " of several optional keys that map to the values that the particular key should"
+                 " take during simulation. When the plan executes, all combinations of the given"
+                 " parameters are simulated:\n"
+                 "  * :surrounds (default: [[0.25 3.0]]) is the list of parameters to pass to the"
+                 " mosaic function when creating the retina. A value of nil indicates that no"
+                 " surround should be used; [weight std] indicates that a surround with a total"
+                 " given weight and with a standard deviation of std should be used. Additionally,"
+                 " [weight std true] specifies that cone-specific surrounds should be used.\n"
+                 "  * :L-to-Ms (default: [[1 1]]) is a list of the L:M ratios to use ([L M]).\n"
+                 "  * :L-to-A-to-Ms (default: [[1 1 1]]) is the same as :L-to-Ms but for"
+                 " simulations of tetrachromatic mosaics.\n"
+                 "  * :L-lambda-maxs :M-lambda-maxs, :A-lambda-maxs, :S-lambda-maxs (defaults:"
+                 " [558.9], [530.3], [545.0], [420.7], respectively) indicate the lambda-max values"
+                 " to simulate for each cone class.\n"
+                 "  * :sizes (default: [20]) is the retina size to simulate; this may be given as a"
+                 " number, in which case the retina is square, or as [width height].\n"
+                 "  * :runs (default: [0]) is the identifiers for the runs of these simulations."
+                 " This parameter may be used to force separate runs of simulations that have"
+                 " identical parameters.\n"
+                 "  * :save-every (default: nil), if an integer, indicates that the simulation"
+                 " should save a copy of the simulation so far (including the full correlation"
+                 " matrix up to that point) every <save-every> images shown.\n"
+                 "  * :S-cone-flags (default: [:human]) indicates flags that can be given to the"
+                 " S-cones when creating the retina. If this is :human, then the S-cones are evenly"
+                 " spaced across the retina and are held at 6% of the total cones. If this is :none"
+                 " then the retina excludes S-cones. If this is a number or a map, the argument is"
+                 " passed directly to the label-cones function (see"
+                 " (doc brainardlab.nben.retina.core/label-cones) for more information).\n"
+                 "  * :samples (default: [2500000]) specifies the number of samples to show the"
+                 " retinas.\n"
+                 "  * :spectral-indices (default: [nil]) is, if a collection is given, the indices"
+                 " (in the hyperspectra) that should be shown one after the other during the"
+                 " simulation as if a film that blocked all but that wavelength of light were"
+                 " placed over the retina during simulation. This was included to simulate"
+                 " conditions reported by Sugita et al (2004).\n"
+                 "  * :noises (default: [nil]): if this is a number s between 0 and 1, includes"
+                 " noise in the simulation at the level of cone responses such that the noise is"
+                 " drawn from a standard deviation with mean 0 and standard deviation of s*u"
+                 " where u is the mean of the cone responses.\n"
+                 "  * :types (default: [:trichromat]) is the type of retina to assume; this may"
+                 " include :trichromat, :dichromat, or :tetrachromat.")}
+  simulation-plans
+  {:basic     {:surrounds [[0.25 3.0]]
+               :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
+               :M-lambda-maxs [530.3 535 540 545 550 555]
+               :L-lambda-maxs [558.9]
+               :S-lambda-maxs [420.7]
+               :sizes [20]
+               :S-cone-flags [:human]
+               :samples [2500000]
+               :runs [1 2]
+               :save-every 100000}
+   :standard  {:surrounds [[0.25 3.0] nil]
+               :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
+               :M-lambda-maxs [530.3 535 540 545 550 555]
+               :L-lambda-maxs [558.9]
+               :S-lambda-maxs [420.7]
+               :sizes [20 15 10 5]
+               :S-cone-flags [:human]
+               :samples [2500000]
+               :runs [0]
+               :save-every 100000}
+   :blur      {:surrounds [[0.25 3.0] nil]
+               :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
+               :M-lambda-maxs [530.3 535 540 545 550 555]
+               :L-lambda-maxs [558.9]
+               :S-lambda-maxs [420.7]
+               :sizes [20]
+               :S-cone-flags [:human]
+               :samples [2500000]
+               :runs ["blur_4"]
+               :save-every 100000}
+   :noise5    {:surrounds [[0.25 3.0]]
+               :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
+               :M-lambda-maxs [530.3 535 540 545 550 555]
+               :L-lambda-maxs [558.9]
+               :S-lambda-maxs [420.7]
+               :sizes [20]
+               :S-cone-flags [:human]
+               :samples [2500000]
+               :noises [0.05]
+               :runs [0]
+               :save-every 100000}
+   :noise1    {:surrounds [[0.25 3.0]]
+               :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
+               :M-lambda-maxs [530.3 535 540 545 550 555]
+               :L-lambda-maxs [558.9]
+               :S-lambda-maxs [420.7]
+               :sizes [20]
+               :S-cone-flags [:human]
+               :samples [2500000]
+               :noises [0.01]
+               :runs [0]
+               :save-every 100000}
+   :opponent  {:surrounds [[0.25 3.0 true]]
+               :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
+               :M-lambda-maxs [530.3 535 540 545 550 555]
+               :L-lambda-maxs [558.9]
+               :S-lambda-maxs [420.7]
+               :sizes [20]
+               :S-cone-flags [:human]
+               :samples [2500000]
+               :runs ["opponent"]
+               :save-every 100000}
+   :Sugita    {:surrounds [[0.25 3.0]]
+               :L-to-Ms [[1 1]]
+               :M-lambda-maxs [530.3]
+               :L-lambda-maxs [558.9]
+               :S-lambda-maxs [420.7]
+               :sizes [20]
+               :S-cone-flags [:human]
+               :samples [2500000]
+               :spectral-indices [[6 12 19 24]]
+               :runs ["Sugita2004"]
+               :save-every 100000}
+   :ditetra   {:surrounds [[0.25 3.0] nil]
+               :L-to-A-to-Ms [[4 1 1] [2 2 1] [2 1 2] [1 1 1] [1 2 2] [1 1 4]]
+               :M-lambda-maxs [530.3]
+               :A-lambda-maxs [535.0 540.0 545.0 550.0 555.0]
+               :L-lambda-maxs [558.9]
+               :S-lambda-maxs [420.7]
+               :sizes [20]
+               :S-cone-flags [:human]
+               :types [:dichromat :tetrachromat]
+               :samples [2500000]
+               :runs [0]
+               :save-every 100000}
+   :periphery {:surrounds [[0.25 3.0]]
+               :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
+               :M-lambda-maxs [535.0 540.0 545.0 550.0 555.0]
+               :L-lambda-maxs [558.9]
+               :S-lambda-maxs [420.7]
+               :sizes [40]
+               :spacings [2]
+               :S-cone-flags [:human]
+               :samples [2500000]
+               :runs ["periphery"]
+               :save-every 100000}
+   :spectral-spacing
+              {:surrounds [[0.25 3.0]]
+               :L-to-A-to-Ms [[2 2 1] [2 1 2] [1 2 2] [1 1 1] [1 1 2] [1 2 1] [2 1 1]]
+               :L-lambda-maxs [558.9]
+               :M-lambda-maxs [512.8]
+               :A-lambda-maxs [466.8]
+               :S-lambda-maxs [420.7]
+               :types [:tetrachromat]
+               :sizes [20]
+               :S-cone-flags [:human]
+               :samples [2500000]
+               :runs ["spectral_spacing"]
+               :save-every 100000}
+   :LM-only   {:surrounds [[0.25 3.0]]
+               :L-to-Ms [[16 1] [8 1] [4 1] [2 1] [1 1] [1 2] [1 4] [1 8] [1 16]]
+               :M-lambda-maxs [530.3]
+               :L-lambda-maxs [558.9]
+               :S-lambda-maxs [420.7]
+               :sizes [20]
+               :S-cone-flags [:none]
+               :samples [5000000]
+               :runs ["tritanope"]
+               :save-every 100000}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -195,7 +243,8 @@
                                    (assoc allbutS :S {:even-spacing true, :fraction 0.06})
                                    (= S-cone-flags :none)
                                    allbutS
-                                   (and (number? S-cone-flags) (> S-cone-flags 0))
+                                   (or (map? S-cone-flags)
+                                       (and (number? S-cone-flags) (> S-cone-flags 0)))
                                    (assoc allbutS :S S-cone-flags)
                                    :else (throw (IllegalArgumentException. "invalid s-cone flag"))))
               :lambda-max (cond (= S-cone-flags :none) (dissoc lmaxs :S)
