@@ -17,7 +17,7 @@ Principle Investigator: [David H. Brainard](mailto:brainard@psych.upenn.edu)
 
 This library is designed for use in simulating the responses of retinas to 
 natural images. The expectation is that it will usually be used in
-conjunction with Leiningen (leiningen.org), which provides a single
+conjunction with [Leiningen](http://leiningen.org), which provides a single
 script, lein, that can be downloaded and run in order to resolve and
 install all dependencies in this local directory. To do this, simply
 follow these instructions:
@@ -39,7 +39,14 @@ simply enter:
 (use '(brainardlab.nben.retina core constants hyperspectral
                                simulation util))
 </code>
-   
+You may then access functions such as simulate-some-retinas directly.
+
+## Documentation ###############################################################
+
+Documentation is available in the doc directory of the
+repository. This documentation was generated with
+[Codox](https://github.com/weavejester/codox), and provides
+descriptions of all the public functions in the package.
 
 ## License #####################################################################
 
