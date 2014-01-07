@@ -73,13 +73,11 @@ autobuild-hyperspectral-cache. The latter is recommended, as it
 requires only the paths of the databases used in Benson et
 al. (2014), and will automatically load the images and build the cache
 from them.  For example:
-<code>
-(autobuild-hyperspectral-cache "data/my-hyperspectral-cache.bin"
-                               :Chakrabarti2011 "hsdbs/Chakrabarti2011/CZ_hsdb"
-                               :Foster2004 "hsdbs/Foster2004"
-                               :Parragas1998
-                               "hsdbs/Parragas1998/brelstaff")
-</code>
+
+     (autobuild-hyperspectral-cache "data/my-hyperspectral-cache.bin"
+                                    :Chakrabarti2011 "hsdbs/Chakrabarti2011/CZ_hsdb"
+                                    :Foster2004 "hsdbs/Foster2004"
+                                    :Parragas1998 "hsdbs/Parragas1998/brelstaff")
 
 ### Multi-threaded computations ################################################
 
