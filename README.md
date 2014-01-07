@@ -9,9 +9,9 @@ standalone tool.
 
 ## Authors #####################################################################
 
-Primary Author: [[Noah C. Benson|mailto:n@nben.net]]
+Primary Author: [Noah C. Benson](mailto:n@nben.net)
 
-Principle Investigator: [[David H. Brainard|mailto:brainard@psych.upenn.edu]]
+Principle Investigator: [David H. Brainard](mailto:brainard@psych.upenn.edu)
 
 ## Usage #######################################################################
 
@@ -23,9 +23,9 @@ install all dependencies in this local directory. To do this, simply
 follow these instructions:
  1. place the lein script (at the time of the writing of this README, the
     script can be found
-    [[here|https://raw.github.com/technomancy/leiningen/stable/bin/lein]]
+    [here](https://raw.github.com/technomancy/leiningen/stable/bin/lein)
     for Mac or Unix and
-    [[here|https://raw.github.com/technomancy/leiningen/stable/bin/lein.bat]]
+    [here](https://raw.github.com/technomancy/leiningen/stable/bin/lein.bat)
     for Windows), in your path,
  2. clone this git repository,
  3. in a terminal, switch to the project's root directory (the
