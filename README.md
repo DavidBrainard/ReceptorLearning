@@ -102,7 +102,7 @@ repository. This documentation was generated with
 [Codox](https://github.com/weavejester/codox), and provides
 descriptions of all the public functions in the package. This
 documentation can also be found online
-[here](http://http://davidbrainard.github.io/ReceptorLearning/index.html).
+[here](http://davidbrainard.github.io/ReceptorLearning/index.html).
 
 ## License #####################################################################
 
