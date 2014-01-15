@@ -1,4 +1,4 @@
-# retina #######################################################################
+# Receptor Learning ############################################################
 
 A Clojure library designed to enable simulation of the responses of
 retinal mosaics to natural images. This library was produced as part
@@ -12,6 +12,28 @@ standalone tool.
 Primary Author: [Noah C. Benson](mailto:n@nben.net)
 
 Principle Investigator: [David H. Brainard](mailto:brainard@psych.upenn.edu)
+
+## Organization ################################################################
+
+This library is organized into a few directories, detailed here:
+ 1. analysis - The analysis directory contains all the code needed to
+    post-process the simulations and plot the figures from the
+    paper. This directory inludes both Matlab code (for embedding the
+    correlation matrices) and Mathematica code (for flattening and
+    classifying retinas and for generating figures).
+ 2. doc - The doc directory contains html documentation for the
+    clojure library. This html may also be access directly
+    [here](http://davidbrainard.github.io/receptorlearning/).
+    The Matlab and Mathematica code in the analysis
+    directory is documented internally.
+ 3. samples - The samples directory contains examples of natural image
+    patches that were drawn from our hyperspectral database for use in
+    simulation of a 20 x 20 retina.
+ 4. src - The src (source) directory contains clojure source code for
+    the receptor learning retina simulation library. It is documented
+    in the doc directory.
+ 5. resources - The resources directory contains additional resources
+    that are not required for use in the library, but that may be useful.
 
 ## Usage #######################################################################
 
