@@ -23,7 +23,7 @@ This library is organized into a few directories, detailed here:
     classifying retinas and for generating figures).
  2. doc - The doc directory contains html documentation for the
     clojure library. This html may also be access directly
-    [here](http://davidbrainard.github.io/receptorlearning/).
+    [here](http://davidbrainard.github.io/ReceptorLearning/).
     The Matlab and Mathematica code in the analysis
     directory is documented internally.
  3. samples - The samples directory contains examples of natural image
