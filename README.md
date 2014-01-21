@@ -1,11 +1,20 @@
 # Receptor Learning ############################################################
 
-A Clojure library designed to enable simulation of the responses of
-retinal mosaics to natural images. This library was produced as part
-of the paper "Unsupervised Learning of Cone Spectral Classes from
-Natural Images" by Noah C. Benson, Jeremy R. Manning, and David
-H. Brainard. It is intended for use as either a library or a
-standalone tool.
+This repository contains source code and sample data relevant to the
+paper "Unsupervised Learning of Cone Spectral Classes from Natural
+Images" by Noah C. Benson, Jeremy R. Manning, and David 
+H. Brainard, currently submitted for publication to PLoS Computational
+Biology. The respository is broken into several parts, all detailed under
+the Organization header. In brief, the source code necessary to
+produce all simulations, analyses, and figures reported in the paper
+are included here, and are broken into three parts:
+ 1. A simulation library written in Clojure, an open-source Java
+    Virtual Machine-based functional language
+ 2. A few Matlab functions that can be used for embedding the
+    correlation matrices in the outputs of the simulations (big Endian
+    binary sim[*].bin files)
+ 3. A Mathematica Notebook containing analysis and figure-generation
+    code.
 
 ## Authors #####################################################################
 
